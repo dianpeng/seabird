@@ -1,7 +1,6 @@
 // To simplify the type system of query language, we build a shin type
 // layer on top of the Javascript's internal type system. This layer is
 // mostly simple and straitforward.
-
 const util = require("util");
 
 // Exceptions ---------------------------------------------
@@ -22,9 +21,6 @@ class TypeMismatch {
     this.msg = msg;
   }
 };
-
-// Type Tagging to make the engine easier to run ----------
-class G
 
 // Types --------------------------------------------------
 class String {
