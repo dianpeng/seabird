@@ -44,12 +44,18 @@ class Pair {
 
 class Dict {
   constructor ( dict , position ) {
-    this.position = poisition;
+    this.position = position;
     this.dict     = dict;
   }
 };
 
 class This {
+  constructor( position ) {
+    this.position = position;
+  }
+};
+
+class Dollar {
   constructor( position ) {
     this.position = position;
   }
@@ -77,6 +83,27 @@ class Function {
   }
 };
 
+class Slice {
+  constructor( start , end , stride , position ) {
+    this.position = position;
+    this.start    = start;
+    this.end      = end;
+    this.stride   = stride;
+  }
+};
+
+class Foreach {
+  constructor( position ) {
+    this.position = position;
+  }
+};
+
+class Wildcard {
+  constructor( position ) {
+    this.position = position;
+  }
+};
+
 class PrefixComponent {
   static get Index() { return 0; }
   static get Call () { return 1; }
@@ -86,35 +113,35 @@ class PrefixComponent {
 
   static NewIndex( expr ) {
     let ret = new PrefixComponent();
-    ret.type = PrefixComponent.Index();
+    ret.type = PrefixComponent.Index;
     ret.value= expr;
     return ret;
   }
 
   static NewCall ( arg ) {
     let ret = new PrefixComponent();
-    ret.type= PrefixComponent.Call();
+    ret.type= PrefixComponent.Call;
     ret.argument = arg;
     return ret;
   }
 
   static NewDot  ( name ) {
     let ret = new PrefixComponent();
-    ret.type = PrefixComponent.Dot();
+    ret.type = PrefixComponent.Dot;
     ret.name = name;
     return ret;
   }
 
   static NewPredicate( expr ) {
     let ret = new PrefixComponent();
-    ret.type = PrefixComponent.Predicate();
+    ret.type = PrefixComponent.Predicate;
     ret.value= value;
     return ret;
   }
 
   static NewRewrwite( expr , position ) {
     let ret = new PrefixComponent();
-    ret.type= PrefixComponent.Rewrite(); 
+    ret.type= PrefixComponent.Rewrite;
     ret.value= value;
     return ret;
   }
@@ -129,10 +156,10 @@ class Prefix {
 };
 
 class Unary {
-  constructor( op , oprand , position ) {
+  constructor( op , opr , position ) {
     this.position = position;
     this.op       = op;
-    this.operand  = operand;
+    this.operand  = opr;
   }
 };
 
@@ -152,4 +179,55 @@ class Ternary {
     this.lhs      = lhs;
     this.rhs      = rhs;
   }
+};
+
+
+// ------------------------------------------------
+class Define {
+  constructor( name , value , position ) {
+    this.position = position;
+    this.name     = name;
+    this.value    = value;
+  }
+};
+
+class Let {
+  constructor( vars , position ) {
+    this.position = position;
+    this.vars     = vars;
+  }
+};
+
+class Program {
+  constructor( vars , query , position ) {
+    this.position = position;
+    this.vars     = vars;
+    this.query    = query;
+  }
+};
+
+module.exports = {
+  Number : Number ,
+  Boolean : Boolean ,
+  String : String ,
+  Null : Null ,
+  List : List ,
+  Pair : Pair ,
+  Dict  : Dict ,
+  This : This,
+  Dollar : Dollar ,
+  Variable : Variable ,
+  Attribute : Attribute ,
+  Function : Function ,
+  Slice : Slice,
+  Foreach : Foreach,
+  Wildcard : Wildcard,
+  PrefixComponent : PrefixComponent,
+  Prefix : Prefix,
+  Unary : Unary,
+  Binary : Binary ,
+  Ternary : Ternary,
+  Define : Define ,
+  Let : Let,
+  Program : Program
 };

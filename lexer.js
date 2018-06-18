@@ -27,6 +27,15 @@ class Token {
   static get Assign   () { return 21; }
   static get Predicate() { return 22; }
   static get Rewrite  () { return 23; }
+  static get Dot      () { return 24; }
+
+  // logical
+  static get And      () { return 25; }
+  static get Or       () { return 26; }
+  static get Not      () { return 27; }
+
+  // wildcard
+  static get Wildcard () { return 28; }
 
   // keywords
   static get Let      () { return 30; }
@@ -59,6 +68,9 @@ class Token {
       case Token.Le :       return "<=";
       case Token.Eq :       return "==";
       case Token.Ne :       return "!=";
+      case Token.And:       return "&&";
+      case Token.Or:        return "||";
+      case Token.Not:       return "!";
       case Token.Comma:     return ",";
       case Token.Semicolon: return ";";
       case Token.Colon:     return ":";
@@ -70,6 +82,8 @@ class Token {
       case Token.RSqr:      return "]";
       case Token.Predicate: return "[?";
       case Token.Rewrite:   return "[|";
+      case Token.Dot:       return ".";
+      case Token.Wildcard:  return "**";
       case Token.Dollar:    return "$";
       case Token.Assign:    return "=";
       case Token.True:      return "true";
@@ -99,10 +113,10 @@ class Lexeme {
 };
 
 class Position {
-  constructor() {
+  constructor( source , start , end ) {
     this.source = source;
-    this.start  = 0;
-    this.end    = 0;
+    this.start  = start;
+    this.end    = end;
   }
 };
 
@@ -117,6 +131,10 @@ class Lexer {
 
   GetToken() {
     return this.lexeme.token;
+  }
+
+  GetTokenName() {
+    return Token.GetTokenName(this.lexeme.token);
   }
 
   GetTokenPosition() {
@@ -184,12 +202,15 @@ class Lexer {
         case "#" : this._LexComment(); break;
         case "+" : return this._NewLexeme( Token.Add, 1, 1);
         case "-" : return this._NewLexeme( Token.Sub, 1, 1);
-        case "*" : return this._NewLexeme( Token.Mul, 1, 1);
+        case "*" : return this._Predicate1( "*" , Token.Mul, Token.Wildcard );
         case "/" : return this._NewLexeme( Token.Div, 1, 1);
         case ">" : return this._Predicate1( "=" , Token.Gt, Token.Ge );
         case "<" : return this._Predicate1( "=" , Token.Lt, Token.Le );
         case "=" : return this._Predicate1( "=" , Token.Assign , Token.Eq );
-        case "!" : return this._Expect    ( "=" , Token.Ne );
+        case "!" : return this._Predicate1( "=" , Token.Not, Token.Ne );
+        case "&" : return this._Expect    ( "&" , Token.And );
+        case "|" : return this._Expect    ( "|" , Token.Or  );
+        case "." : return this._NewLexeme( Token.Dot  , 1, 1);
         case "," : return this._NewLexeme( Token.Comma, 1, 1);
         case ":" : return this._NewLexeme( Token.Colon, 1, 1);
         case ";" : return this._NewLexeme( Token.Semicolon , 1, 1);
@@ -305,11 +326,13 @@ class Lexer {
   }
 
   _IsAlpha (c) {
-    return (c >= "a" && c <= "z") || (c >= "A" && c <= "Z");
+    const letters = /^[A-Za-z]$/;
+    return c.match(letters);
   }
 
   _IsDigit (c) {
-    return c >= "0" && c <= "9";
+    const digit = /^[0-9]$/;
+    return c.match(digit);
   }
 
   _IsIdChar(c) {
@@ -351,6 +374,18 @@ class Lexer {
     return this.lexeme;
   }
 
+  _LexAttribute(c) {
+    let buf = [c];
+    ++this.cursor;
+    if(!this._IsIdRestChar(this.source.charAt(this.cursor))) {
+      this._Error("at least one valid identifier character should follow @ for attribute");
+    }
+    let lexer = this._LexVariable(this.source.charAt(this.cursor));
+    lexer.token = Token.Attribute;
+    lexer.length += 1;
+    return lexer;
+  }
+
   _LexVariableOrKeyword(c) {
     switch(c) {
       case "t":
@@ -387,11 +422,15 @@ class Lexer {
 
     if(this._IsIdChar(c))
       return this._LexVariable(c);
+    else if(c == "@")
+      return this._LexAttribute(c);
+
     return false;
   }
 };
 
 module.exports = {
+  Position : Position,
   Token : Token ,
   Lexeme: Lexeme,
   Lexer : Lexer

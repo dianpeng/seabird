@@ -13,15 +13,17 @@ The language has a simple type system though it is weak type inheritedly. There'
 1. number (double)
 2. string
 3. null
-4. list
-5. pair
-6. dict
-7. function
+4. boolean
+5. list
+6. pair
+7. dict
+8. function
+9. user defined
 
 ### 2. Grammar
 
 The following informal BNF is used to describe the grammar
- 
+
 @main : query-expression
 
 query-expression := query-variable ? query
