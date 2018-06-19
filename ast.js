@@ -111,31 +111,35 @@ class PrefixComponent {
   static get Predicate() { return 3; }
   static get Rewrite () { return 4; }
 
-  static NewIndex( expr ) {
+  static NewIndex( expr , position ) {
     let ret = new PrefixComponent();
     ret.type = PrefixComponent.Index;
     ret.value= expr;
+    ret.position = position;
     return ret;
   }
 
-  static NewCall ( arg ) {
+  static NewCall ( arg , position ) {
     let ret = new PrefixComponent();
     ret.type= PrefixComponent.Call;
     ret.argument = arg;
+    ret.position = position;
     return ret;
   }
 
-  static NewDot  ( name ) {
+  static NewDot  ( name , position ) {
     let ret = new PrefixComponent();
     ret.type = PrefixComponent.Dot;
     ret.name = name;
+    ret.position = position;
     return ret;
   }
 
-  static NewPredicate( expr ) {
+  static NewPredicate( expr , position ) {
     let ret = new PrefixComponent();
     ret.type = PrefixComponent.Predicate;
     ret.value= value;
+    ret.position = position;
     return ret;
   }
 
@@ -143,6 +147,7 @@ class PrefixComponent {
     let ret = new PrefixComponent();
     ret.type= PrefixComponent.Rewrite;
     ret.value= value;
+    ret.position = position;
     return ret;
   }
 };

@@ -204,8 +204,10 @@ class Parser {
     let stride= null;
 
     if(this.lexer.GetToken() == lexer.Token.Colon) {
+      this.lexer.Next();
       end = this._ParseExpression();
       if(this.lexer.GetToken() == lexer.TokenColon) {
+        this.lexer.Next();
         stride = this._ParseExpression();
       }
     }
@@ -218,6 +220,7 @@ class Parser {
     let start_pos = this.lexer.GetTokenPosition();
     let primary = this._ParsePrimary();
     let rest    = [];
+    let pos     = null;
 
   prefix:
     do {
@@ -227,14 +230,17 @@ class Parser {
             case lexer.Token.Variable:
               {
                 let name = this.lexer.lexeme.text;
-                rest.push(ast.PrefixComponent.NewDot(new ast.Variable(name,this._NewPosition(start_pos))));
+                pos      = this._NewPosition(start_pos);
+                rest.push(ast.PrefixComponent.NewDot(new ast.Variable(name,pos),pos));
               }
               break;
             case lexer.Token.Mul:
-              rest.push(ast.PrefixComponent.NewDot(new ast.Foreach(this._NewPosition(start_pos))));
+              pos = this._NewPosition(start_pos);
+              rest.push(ast.PrefixComponent.NewDot(new ast.Foreach(pos),pos));
               break;
             case lexer.Token.Wildcard:
-              rest.push(ast.PrefixComponent.NewDot(new ast.Wildcard(this._NewPosition(start_pos))));
+              pos = this._NewPosition(start_pos);
+              rest.push(ast.PrefixComponent.NewDot(new ast.Wildcard(pos),pos));
               break;
             default:
               assert(false);
@@ -247,7 +253,8 @@ class Parser {
           {
             this.lexer.Next();
             let expr = this._ParseIndex();
-            rest.push(ast.PrefixComponent.NewIndex(expr));
+            pos = this._NewPosition(start_pos);
+            rest.push(ast.PrefixComponent.NewIndex(expr,pos));
             this._Expect(lexer.Token.RSqr);
             this.lexer.Next();
           }
@@ -257,7 +264,8 @@ class Parser {
           {
             this.lexer.Next();
             let expr = this._ParseExpression();
-            rest.push(ast.PrefixComponent.NewIndex(expr));
+            pos = this._NewPosition(start_pos);
+            rest.push(ast.PrefixComponent.NewIndex(expr,pos));
             this._Expect(lexer.Token.RSqr);
             this.lexer.Next();
           }
@@ -276,7 +284,8 @@ class Parser {
                 this._Error("expect \",\" or \")\" when call a function");
               }
             }
-            rest.push(ast.PrefixComponent.NewCall(call_arg));
+            pos = this._NewPosition(start_pos);
+            rest.push(ast.PrefixComponent.NewCall(call_arg,pos));
             this.lexer.Next();
           }
           break;

@@ -118,6 +118,10 @@ class Position {
     this.start  = start;
     this.end    = end;
   }
+
+  GetCodeSnippet() {
+    return this.source.substr(this.start,this.end-this.start);
+  }
 };
 
 class Lexer {
