@@ -206,9 +206,11 @@ class Parser {
     if(this.lexer.GetToken() == lexer.Token.Colon) {
       this.lexer.Next();
       end = this._ParseExpression();
-      if(this.lexer.GetToken() == lexer.TokenColon) {
+      if(this.lexer.GetToken() == lexer.Token.Colon) {
         this.lexer.Next();
         stride = this._ParseExpression();
+      } else {
+        this._Error("expect a \":\" to specify the stride");
       }
     }
 

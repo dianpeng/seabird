@@ -334,8 +334,8 @@ class Eval {
 
   _EvalNumber (x) { return this._SetThis(new obj.Number(x.value)); }
   _EvalBoolean(x) { return this._SetThis(new obj.Boolean(x.value));}
-  _EvalString (x) { return this._SetThis(obj.String(x.value)); }
-  _EvalNull   (x) { return this._SetThis(obj.Null()); }
+  _EvalString (x) { return this._SetThis(new obj.String(x.value)); }
+  _EvalNull   (x) { return this._SetThis(new obj.Null()); }
   _EvalThis   (x) { return this._SetThis(this.list_stack.Top()); }
   _EvalDollar (x) { return this._SetThis(this.dollar); }
 
@@ -363,8 +363,9 @@ class Eval {
   _EvalIndex(x) {
     let slice = x.value;
     let start = this._EvalExpr(slice.start);
-    if(x.end == null) {
-      let this_ptr = this._This();
+    let this_ptr = this._This();
+
+    if(slice.end == null) {
       // normal indexing , dispatch indexing operations
       if(this._IsHeapTypeOrResultSet(this_ptr)) {
         return this._SetThis((this._Apply(this_ptr,(n) => { return n.Index(start); })));
@@ -529,7 +530,7 @@ class Eval {
         return this._SetThis(val.Not());
       } else {
         let bval = this._ToBoolean(x.position,val);
-        return this._SetThis(new ast.Boolean(!bval));
+        return this._SetThis(new obj.Boolean(!bval));
       }
     }
   }
@@ -617,14 +618,14 @@ class Eval {
       let lval= this._ToBoolean(x.lhs.pos,lhs);
       if(lval) {
         if(x.op == lexer.Token.Or)
-          return this._SetThis(new ast.Boolean(true));
+          return this._SetThis(new obj.Boolean(true));
         else
-          return this._SetThis(new ast.Boolean(this._ToBoolean(x.rhs.pos,this._EvalExpr(x.rhs))));
+          return this._SetThis(new obj.Boolean(this._ToBoolean(x.rhs.pos,this._EvalExpr(x.rhs))));
       } else {
         if(x.op == lexer.Token.And)
-          return this._SetThis(new ast.Boolean(false));
+          return this._SetThis(new obj.Boolean(false));
         else
-          return this._SetThis(new ast.Boolean(this._ToBoolean(x.rhs.pos,this._EvalExpr(x.rhs))));
+          return this._SetThis(new obj.Boolean(this._ToBoolean(x.rhs.pos,this._EvalExpr(x.rhs))));
       }
     }
   }

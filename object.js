@@ -119,18 +119,24 @@ class String extends HeapObject {
     this.value = value;
   }
 
-  IndexWithNumber(x) {
+  _IndexRaw(x) {
     if(x < this.value.length)
-      return new String(this.value.charAt(x));
+      return this.value.charAt(x);
     throw new OOB(util.format("oob access for String with length:%d and index:%d",this.value.length,x));
+  }
+
+  IndexWithNumber(x) {
+    return new String(this._IndexRaw(x));
   }
 
   Index(idx) {
     if(idx instanceof Number) {
-      this.IndexWithNumber(idx.value);
+      return this.IndexWithNumber(idx.value);
     }
-    throw new TypeMismatch("expect number but get type %s",typeof key);
+    assert(false);
+    throw new TypeMismatch(util.format("expect Number but get type %s",typeof idx));
   }
+
   Slice(start,end,stride) {
     if(start instanceof Number && end instanceof Number && stride instanceof Number) {
       let sidx = start.value;
@@ -138,13 +144,13 @@ class String extends HeapObject {
       let stidx= stride.value;
 
       // check whether a infinit loop
-      if(eidx - (sidx + stidx) < eidx - sidx) {
+      if(eidx - (sidx + stidx) >= eidx - sidx) {
         throw new SliceOOB("the slice index specified forms an infinit loop");
       }
 
       let buf = [];
       for( ; sidx < eidx ; sidx += stidx ) {
-        buf.push(this.IndexWithNumber(sidx));
+        buf.push(this._IndexRaw(sidx));
       }
       return new String(buf.join(""));
     }
@@ -189,13 +195,13 @@ class List extends HeapObject {
       let stidx= stride.value;
 
       // check whether a infinit loop
-      if(eidx - (sidx + stidx) < eidx - sidx) {
+      if(eidx - (sidx + stidx) >= eidx - sidx) {
         throw new SliceOOB("the slice index specified forms an infinit loop");
       }
 
       let ret = new List();
       for( ; sidx < eidx ; sidx += stidx ) {
-        ret.push(this.IndexWithNumber(sidx));
+        ret.Push(this.IndexWithNumber(sidx));
       }
       return ret;
     }
