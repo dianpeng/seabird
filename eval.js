@@ -9,6 +9,7 @@ const lexer = require("./lexer.js");
 const ast   = require("./ast.js");
 const parse = require("./parser.js");
 const obj   = require("./object.js");
+const excep = require("./exception.js");
 
 //  Helper class and functions
 class Stack {
@@ -35,109 +36,8 @@ class Stack {
   GetSize() { return this.list.length; }
 };
 
-function IsInheritFrom(a,b) {
-  return a instanceof b;
-}
-
-function IsHeapType(v) {
-  return IsInheritFrom(v,obj.HeapObject);
-}
-
-// Tag class
-class ResultSet {};
-
-class NormalResultSetIterator {
-  constructor(l)   { this._list = l; this._cursor = 0; }
-  HasNext    ()    { return this._cursor < this._list.length; }
-  Next       ()    { ++this._cursor; }
-  GetValue   ()    { return this._list[this._cursor]; }
-};
-
-class NormalResultSet extends ResultSet {
-  static NewListResultSet( list ) { this.list = list; }
-  constructor()    { this.list = []; }
-  Add(v)           { this.list.push(v); }
-  GetIterator()    { return new ResultSetIterator(this.list); }
-};
-
-
-// A iterator wraper that generates recursive descent results
-class RecursiveResultSetIterator {
-  constructor(obj) {
-    this._pending_list = [];
-    this._pcursor      =  0;
-    this._cur_iterator = null;
-
-    this._EnqueuePendingList(obj);
-    this.HasNext();
-  }
-
-  HasNext() {
-    if(this._cur_iterator != null && this._cur_iterator.HasNext()) {
-      return true;
-    } else {
-      // peek one from the pending list
-      do {
-        let obj = this._DequeuePendingList();
-        this._cur_iterator = this._NewIterator(obj);
-        if(this._cur_iterator.HasNext())
-          return true;
-      } while(!this._PendingListEmpty());
-
-      this._cur_iterator = null;
-      // don't have anything
-      return false;
-    }
-  }
-
-  Next() {
-    this._cur_iterator.Next();
-  }
-
-  GetValue() {
-    let v = this._cur_iterator.GetValue();
-    if(IsHeapType(v)) {
-      this._EnqueuePendingList(v);
-    }
-    return v;
-  }
-
-  // queue implementation that is simple and stupid
-  _DequeuePendingList() {
-    assert(!this._PendingListEmpty());
-    let v = this._pending_list[this._pcursor];
-    ++this._pcursor;
-    return v;
-  }
-
-  _EnqueuePendingList(v) {
-    this._pending_list.push(v);
-  }
-
-  _PendingListEmpty() {
-    return this._pcursor == this._pending_list.length;
-  }
-
-  _NewIterator(v) {
-    return v.GetIterator();
-  }
-};
-
-class RecursiveResultSet extends ResultSet {
-  constructor(obj) { this.obj = obj; }
-  GetIterator() { return new RecursiveResultSetIterator(this.obj); }
-};
-
-class FatalException {
-  constructor(msg) {
-    this.msg = msg;
-  }
-};
-
-class SoftException {
-  constructor(msg) {
-    this.msg = msg;
-  }
+class PredicationFailure extends excep.SoftException {
+  constructor() { super(""); }
 };
 
 // Function that is written inside of the script
@@ -178,7 +78,7 @@ class Eval {
       jsstk = new Error().stack;
 
 
-    return util.format("around `%s` evaluation error occur: %s\n%s\n%s",
+    return util.format("around `%s` evaluation error occur: %s\n\n%s\n%s",
                        pos.GetCodeSnippet(),
                        msg,
                        stk.join("\n"),
@@ -186,19 +86,19 @@ class Eval {
   }
 
   _Fatal(pos,msg) {
-    throw new FatalException(this._PopulateExceptionMessage(pos,msg));
+    throw new excep.FatalException(this._PopulateExceptionMessage(pos,msg));
   }
 
   _Error(pos,msg) {
-    throw new SoftException(this._PopulateExceptionMessage(pos,msg));
+    throw new excep.SoftException(this._PopulateExceptionMessage(pos,msg));
   }
 
   _TypeOf(node) {
-    if(IsInheritFrom(node,ResultSet)) {
+    if(obj.IsInheritFrom(node,obj.ResultSet)) {
       return "result-set";
     } else if(node instanceof Func) {
       return "script-function";
-    } else if(IsInheritFrom(node,obj.UserObject)) {
+    } else if(obj.IsInheritFrom(node,obj.UserObject)) {
       return node.TypeName();
     } else {
       return typeof node;
@@ -229,7 +129,7 @@ class Eval {
   }
 
   _IsHeapTypeOrResultSet(v) {
-    return IsHeapType(v) || IsInheritFrom(v,ResultSet);
+    return obj.IsHeapType(v) || obj.IsInheritFrom(v,obj.ResultSet);
   }
 
   _Frame() {
@@ -244,17 +144,17 @@ class Eval {
   // will check the input node's type to see whether it is a ResultSet or not, if it
   // is a ResultSet, then just do a for loop and generate a result set ; otherwise
   // directly call the node itself.
-  _Apply(v,what) {
-    if(IsInheritFrom(v,ResultSet)) {
-      let output = new ResultSet();
+  _Apply2(v,set_cb,prim_cb) {
+    if(obj.IsInheritFrom(v,obj.ResultSet)) {
+      let output = new obj.ResultSet();
 
-      for( let itr = v.GetIterator(); v.HasNext(); v.Next() ) {
+      for( let itr = v.GetIterator(); itr.HasNext(); itr.Next() ) {
         let e = itr.GetValue();
         try {
-          output.Add(what(e));
+          output.Push(set_cb(e));
         } catch(e) {
           // this is a search semantic, so filter out the SoftException
-          if (e instanceof FatalException)
+          if (!(e instanceof excep.SoftException))
             throw e;
 
           // skip this entry and then go on
@@ -263,9 +163,14 @@ class Eval {
       }
       return output;
     } else {
-      return what(v);
+      return prim_cb(v);
     }
   }
+
+  _Apply(v,what) {
+    return this._Apply2(v,what,what);
+  }
+
 
   // RAII helper function to perform this pointer restore and popsup
   _ThisScope(cb) {
@@ -282,7 +187,7 @@ class Eval {
     }
   }
 
-  _ThisScopeWithContext(cb,ctx) {
+  _ThisScopeWithContext(ctx,cb) {
     this._PushAndSetThis(ctx);
     try {
       cb();
@@ -297,11 +202,12 @@ class Eval {
 
   // cast/conversion
   _ToBoolean(pos,v) {
-    if(IsInheritFrom(v,ResultSet)) {
-      this._Fatal(pos,"result set cannot be converted to boolean");
+    if(obj.IsInheritFrom(v,obj.ResultSet)) {
+      this._Error(pos,"result set cannot be converted to boolean");
     }
     if(v instanceof obj.Null)         return false;
     if(v instanceof obj.Boolean)      return v.value;
+    if(v instanceof obj.Number)       return v.value != 0;
     return true;
   }
 
@@ -385,15 +291,15 @@ class Eval {
     let this_ptr = this._This();
     if(this._IsHeapTypeOrResultSet(this_ptr)) {
       // expand the type into ResultSet
-      if(IsInheritFrom(this_ptr,obj.UserObject)) {
+      if(obj.IsInheritFrom(this_ptr,obj.UserObject)) {
         // user object
         return this._SetThis(this_ptr);
       } else {
         // construct a *ResultSet* based on iterator returned
         let itr = this_ptr.GetIterator();
-        let buf = new NormalResultSet();
+        let buf = new obj.ResultSet();
         for( ; itr.HasNext(); itr.Next() ) {
-          buf.Add(itr.GetValue());
+          buf.Push(itr.GetValue());
         }
         return this._SetThis(buf);
       }
@@ -404,7 +310,7 @@ class Eval {
   _EvalWildcard(x) {
     let this_ptr = this._This();
     if(this._IsHeapTypeOrResultSet(this_ptr)) {
-      return this._SetThis(new RecursiveResultSet(this_ptr));
+      return this._SetThis(new obj.RecursiveResultSet(this_ptr));
     }
     this._Error(x.position,util.format("object type %s doesn't support \"**\" (wildcard) semantic",this._TypeOf(this_ptr)));
   }
@@ -412,14 +318,17 @@ class Eval {
   _EvalDot(x) {
     let this_ptr = this._This();
     if(this._IsHeapTypeOrResultSet(this_ptr)) {
-      let comp = x.value;
+      let comp = x.name;
       if(comp instanceof ast.Variable) {
-        return this._SetThis(this._Apply(this_ptr,(n) => { return n.Dot(new obj.String(x.name)); }));
+        return this._SetThis(this._Apply(this_ptr,(n) => { return n.Dot(new obj.String(comp.name)); }));
       } else if(comp instanceof ast.Foreach) {
         return this._EvalForeach(comp);
       } else if(comp instanceof ast.Wildcard) {
         return this._EvalWildcard(comp);
+      } else if(comp instanceof ast.Attribute) {
+        return this._EvalAttribute(comp);
       } else {
+        console.log("xxx",comp);
         assert(false);
       }
     }
@@ -428,31 +337,34 @@ class Eval {
 
   _EvalPredicate(x) {
     let this_ptr   = this._This();
-    let predicator = x.value; // expression for predicator
-    if(this._IsHeapTypeOrResultSet(this_ptr)) {
-      return this._SetThis(this._Apply(this_ptr,
-        (n) => {
-          let v = this._EvalExprWithContext(predicator,n);
-          if(this._ToBoolean(x.position,v))
-            return n;
-        })
-      );
-    }
-    this._Error(x.position,util.format("object type %s doesn't support \"[?\" operator",this._TypeOf(this_ptr)));
+    return this._SetThis(this._Apply2(this_ptr,
+      (n) => {
+        let v = this._EvalExprWithContext(n,x.value);
+        if(this._ToBoolean(x.position,v))
+          return n;
+
+        // throw a soft exception to let the Apply function to catch it and then
+        // skip this entry
+        throw new PredicationFailure();
+      },
+      (n) => {
+        let v = this._EvalExprWithContext(n,x.value);
+        if(this._ToBoolean(x.position,v))
+          return n;
+        return new obj.Null();
+      }
+    ));
   }
 
   _EvalRewrite(x) {
     let this_ptr   = this._This();
     let rewrite    = x.value;
-    if(this._IsHeapTypeOrResultSet(this_ptr)) {
-      return this._SetThis(this._Apply(this_ptr,
-        (n) => {
-          let v = (this._EvalExprWithContext(rewrite,n));
-          return v;
-        })
-      );
-    }
-    this._Error(x.position,util.format("object type %s doesn't support \"[|\" operator",this._TypeOf(this_ptr)));
+    return this._SetThis(this._Apply(this_ptr,
+      (n) => {
+        let v = (this._EvalExprWithContext(n,rewrite));
+        return v;
+      })
+    );
   }
 
   _EvalCall(x) {
@@ -482,7 +394,7 @@ class Eval {
       this.frame.pop();
 
       return result;
-    } else if(IsInheritFrom(this_ptr,obj.UserObject)) {
+    } else if(obj.IsInheritFrom(this_ptr,obj.UserObject)) {
       let arg = [];
       for( const a of x.argument ) {
         arg.push(a);
@@ -493,7 +405,7 @@ class Eval {
       return result;
     }
 
-    this._Fatal(x.position,util.format("cannot call function on type %s",this._TypeOf(this_ptr)));
+    this._Error(x.position,util.format("cannot call function on type %s",this._TypeOf(this_ptr)));
   }
 
   _EvalPrefixComponent(x) {
@@ -515,18 +427,18 @@ class Eval {
   }
 
   _EvalUnary(x) {
-    let opr = x.oprand;
+    let opr = x.operand;
     let val = this._EvalExpr(opr);
     if(x.op == lexer.Token.Sub) {
       // negate the `val` value
       if(val instanceof obj.Number) {
         return this._SetThis(new obj.Number(-val.value));
-      } else if(IsInheritFrom(val,obj.UserObject)) {
+      } else if(obj.IsInheritFrom(val,obj.UserObject)) {
         return this._SetThis(val.Negate());
       }
       this._Error(x.position,util.format("object type %s doesn't support negate operator",this._TypeOf(this_ptr)));
     } else {
-      if(IsInheritFrom(val,obj.UserObject)) {
+      if(obj.IsInheritFrom(val,obj.UserObject)) {
         return this._SetThis(val.Not());
       } else {
         let bval = this._ToBoolean(x.position,val);
@@ -542,10 +454,10 @@ class Eval {
   _ApplyArithmeticOp(pos,lhs,rhs,num_op,obj_op,op) {
     if(this._IsBothNumber(lhs,rhs)) {
       return this._SetThis(new obj.Number(num_op(lhs.value,rhs.value)));
-    } else if(IsInheritFrom(lhs,obj.UserObject)) {
+    } else if(obj.IsInheritFrom(lhs,obj.UserObject)) {
       return this._SetThis(obj_op(lhs,rhs));
     } else {
-      this._Fatal(pos,util.format("cannot apply operator %s on type lhs:%s , rhs:%s",
+      this._Error(pos,util.format("cannot apply operator %s on type lhs:%s , rhs:%s",
                                   op,this._TypeOf(lhs),this._TypeOf(rhs)));
     }
   }
@@ -557,10 +469,10 @@ class Eval {
       let lhs = this._ToString(lhs);
       let rhs = this._ToString(rhs);
       return this._SetThis(prim_op(lhs,rhs));
-    } else if(IsInheritFrom(lhs,obj.UserObject)) {
+    } else if(obj.IsInheritFrom(lhs,obj.UserObject)) {
       return this._SetThis(obj_op(lhs,rhs));
     } else {
-      this._Fatal(pos,util.format("cannot apply operator %s on type lhs:%s , rhs:%s",
+      this._Error(pos,util.format("cannot apply operator %s on type lhs:%s , rhs:%s",
                                   op,this._TypeOf(lhs),this._TypeOf(rhs)));
     }
   }
@@ -677,6 +589,8 @@ class Eval {
       return this._EvalBinary(x);
     } else if(x instanceof ast.Ternary) {
       return this._EvalTernary(x);
+    } else if(x instanceof ast.SubExpr) {
+      return this._EvalSubExpr(x.expr);
     } else {
       this._Fatal(x.position,util.format("BUG in evaluator? I cannot do shit w.r.t node %s",typeof x));
     }
@@ -688,6 +602,29 @@ class Eval {
 
   _EvalExprWithContext(ctx,x) {
     return this._ThisScopeWithContext(ctx,() => { this._EvalAst(x); });
+  }
+
+  _ToList(x) {
+    assert(x instanceof obj.ResultSet);
+    let l = new obj.List();
+    for( let itr = x.GetIterator(); itr.HasNext(); itr.Next() ) {
+      l.Push(itr.GetValue());
+    }
+    return l;
+  }
+
+  // The sub expression has special semnatic that will flatten the result set
+  // into a normal list , basically does the expansion. So expression like this:
+  //
+  // v.*[? some_predicator ][0] will be interpreter as apply all the expression
+  // as searching filter after `*` to expansion of v.
+  //
+  // but (v.*[? some_predicator ])[0] will become that the stuff inside of the
+  // parenthsis will be flatten into a list and then the last `[0]` is an index
+  // for this list. This is more intuitive
+  _EvalSubExpr(x) {
+    let r = this._EvalExpr(x);
+    return this._SetThis(this._ToList(r));
   }
 
   _EvalLet(x) {

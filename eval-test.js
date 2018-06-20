@@ -58,7 +58,6 @@ function _Run(xxx,map) {
     return e.Eval(node);
   } catch(e) {
     console.log(e.msg);
-    console.log(new Error().stack);
     return null;
   }
 }
@@ -75,7 +74,14 @@ function _Expect(xxx,value) {
   }
 }
 
-function _testArith() {
+function TestUnary() {
+  _Expect("-1", new object.Number(-1));
+  _Expect("let v = 10; -v", new object.Number(-10));
+  _Expect("let v = 10; !v", new object.Boolean(false));
+  _Expect("let v = 0 ; !v", new object.Boolean(true));
+}
+
+function TestArith() {
   _Expect("1+2*3",new object.Number(7));
   _Expect("let v = 10; 1 + 2*v",new object.Number(21));
   _Expect("let v = 20; 1 + 1*v",new object.Number(21));
@@ -86,7 +92,7 @@ function _testArith() {
   _Expect("let xx= \"xx\"; xx[0]", new object.String("x"));
 }
 
-function _testComp() {
+function TestComp() {
   _Expect("1 > 2",new object.Boolean(false));
   _Expect("1 < 2",new object.Boolean(true ));
   _Expect("1 ==2",new object.Boolean(false));
@@ -95,17 +101,53 @@ function _testComp() {
   _Expect("1 <=2",new object.Boolean(true ));
 }
 
-function _testLogic() {
+function TestLogic() {
   _Expect("true && false",new object.Boolean(false));
   _Expect("true || false",new object.Boolean(true ));
   _Expect("false && xx  ",new object.Boolean(false));
   _Expect("true ||  xx  ",new object.Boolean(true ));
 }
 
-function _testString() {
+function TestString() {
   _Expect("let v = \"abcde\"; v[1]",new object.String("b"));
   _Expect("let v = \"abcde\"; v[0:5:2]", new object.String("ace"));
+  _Expect("let v = \"abcd\"; v.@size",new object.Number(4));
+  _Expect("let v = \"\"; v.@empty", new object.Boolean(true));
 }
 
+function TestList() {
+  _Expect("let v = [1,true,false,null,3]; v[0] + v[4]", new object.Number(4));
+  _Expect("let v = [1,null,null]; v[1]", new object.Null());
+  _Expect("let v = []; v.@size == 0", new object.Boolean(true));
+  _Expect("let v = []; v.@empty"    , new object.Boolean(true));
+}
 
-_testString();
+function TestDict() {
+  _Expect("let v = {}; v.@empty", new object.Boolean(true));
+  _Expect("let v = { \"a\" : 10 }; v[\"a\"] + v.a", new object.Number(20));
+}
+
+function TestPredicate() {
+  _Expect("let v = 10; v[? this > 1]", new object.Number(10));
+  _Expect("let v = 10; v[? this < 1]", new object.Null());
+  _Expect("let x = [1,2,34]; x[? this.@size == 3 ][0]", new object.Number(1));
+}
+
+function TestRewrite() {
+  _Expect("let v = 10; v[| this + 10 ]", new object.Number(20));
+  _Expect("let v = 10; v[| this < 1  ]", new object.Boolean(false));
+}
+
+function TestForeach() {
+  _Expect("let v = [1,2,3,4]; (v.*[| this * 2 ])[0]", new object.Number(2));
+  _Expect("let v = [2,4,6,8]; (v.*[| this / 2 ])[0]", new object.Number(1));
+  _Expect("let v = [3,6,9,12];(v.*[? this > 7 ])[0]", new object.Number(9));
+}
+
+function TestWildcard() {
+  _Expect("let v = [1,2,3,[1,2,3,4]]; (v.**[? this > 1])[1]", new object.Number(3));
+  _Expect("let v = {\"a\" : {\"b\" : { \"aa\" : 10 }}, \"b\" : {\"aa\":11}} , result = v.**.aa;" +
+          "(result.**[? this > 10 ])[0]",new object.Number(11));
+}
+
+TestWildcard();

@@ -78,7 +78,7 @@ class Parser {
     } else {
       this._Expect(lexer.Token.RPar);
       this.lexer.Next();
-      return first;
+      return new ast.SubExpr(first);
     }
   }
 
@@ -236,6 +236,13 @@ class Parser {
                 rest.push(ast.PrefixComponent.NewDot(new ast.Variable(name,pos),pos));
               }
               break;
+            case lexer.Token.Attribute:
+              {
+                let name = this.lexer.lexeme.text;
+                pos      = this._NewPosition(start_pos);
+                rest.push(ast.PrefixComponent.NewDot(new ast.Attribute(name,pos),pos));
+              }
+              break;
             case lexer.Token.Mul:
               pos = this._NewPosition(start_pos);
               rest.push(ast.PrefixComponent.NewDot(new ast.Foreach(pos),pos));
@@ -264,10 +271,16 @@ class Parser {
         case lexer.Token.Predicate:
         case lexer.Token.Rewrite:
           {
+            let tk = this.lexer.GetToken();
             this.lexer.Next();
             let expr = this._ParseExpression();
             pos = this._NewPosition(start_pos);
-            rest.push(ast.PrefixComponent.NewIndex(expr,pos));
+            if(tk == lexer.Token.Rewrite) {
+              rest.push(ast.PrefixComponent.NewRewrite  (expr,pos));
+            } else {
+              rest.push(ast.PrefixComponent.NewPredicate(expr,pos));
+            }
+
             this._Expect(lexer.Token.RSqr);
             this.lexer.Next();
           }

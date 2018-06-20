@@ -138,15 +138,15 @@ class PrefixComponent {
   static NewPredicate( expr , position ) {
     let ret = new PrefixComponent();
     ret.type = PrefixComponent.Predicate;
-    ret.value= value;
+    ret.value= expr;
     ret.position = position;
     return ret;
   }
 
-  static NewRewrwite( expr , position ) {
+  static NewRewrite( expr , position ) {
     let ret = new PrefixComponent();
     ret.type= PrefixComponent.Rewrite;
-    ret.value= value;
+    ret.value= expr;
     ret.position = position;
     return ret;
   }
@@ -183,6 +183,13 @@ class Ternary {
     this.cond     = cond;
     this.lhs      = lhs;
     this.rhs      = rhs;
+  }
+};
+
+class SubExpr {
+  constructor(expr) {
+    this.position = expr.position;
+    this.expr     = expr;
   }
 };
 
@@ -232,6 +239,7 @@ module.exports = {
   Unary : Unary,
   Binary : Binary ,
   Ternary : Ternary,
+  SubExpr : SubExpr,
   Define : Define ,
   Let : Let,
   Program : Program

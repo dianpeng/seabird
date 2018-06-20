@@ -3,54 +3,80 @@
 // mostly simple and straitforward.
 const util   = require("util");
 const assert = require("assert");
+const excep  = require("./exception.js");
+
+// Helper functions ---------------------------------------
+function IsInheritFrom(a,b) {
+  return a instanceof b;
+}
+
+function IsHeapType(v) {
+  return IsInheritFrom(v,HeapObject);
+}
+
+function IsStructureType(v) {
+  return IsInheritFrom(v,StructureType);
+}
 
 // Exceptions ---------------------------------------------
-class KeyNotFound {
+class ObjectException extends excep.SoftException {
+  constructor(msg) {
+    super(util.format("%s\n%s",msg,new Error().stack));
+  }
+};
+
+class KeyNotFound extends ObjectException {
   constructor(key) {
-    this.msg = util.format("key %s not found",key);
+    super(util.format("key %s not found",key));
   }
 };
 
-class KeyExisted {
+class KeyExisted extends ObjectException {
   constructor(key) {
-    this.msg = util.format("key %s already existed",key);
+    super(util.format("key %s already existed",key));
   }
 };
 
-class TypeMismatch {
+class TypeMismatch extends ObjectException {
   constructor(msg) {
-    this.msg = msg;
+    super(msg);
   }
 };
 
-class MethodNotImplemented {
+class MethodNotImplemented extends ObjectException {
   constructor(msg) {
-    this.msg = msg;
+    super(msg);
   }
 };
 
-class SliceOOB {
+class SliceOOB extends ObjectException {
   constructor(msg) {
-    this.msg = msg;
+    super(msg);
   }
 };
 
-class OOB {
+class OOB extends ObjectException {
   constructor(msg) {
-    this.msg = msg;
+    super(msg);
   }
 };
 
-class NoAttribute {
+class NoAttribute extends ObjectException {
   constructor(msg) {
-    this.msg = msg;
+    super(msg);
+  }
+};
+
+class ReadOnly extends ObjectException {
+  constructor(msg) {
+    super(msg);
   }
 };
 
 // Helpers ------------------------------------------------
 class ListIteratorWrapper {
   constructor(l) {
-    this._list = list;
+    this._list   = l;
     this._cursor = 0;
   }
 
@@ -84,33 +110,42 @@ class PairIterator {
 
 
 // Types --------------------------------------------------
-class Number {
+
+class EvalInterface {
+  Dot(idx)          { throw new MethodNotImplemented(util.format("%s::Dot",this._name)); }
+  Index(id)         { throw new MethodNotImplemented(util.format("%s::Index",this._name)); }
+  Slice(a,b,c)      { throw new MethodNotImplemented(util.format("%s::Slice",this._name)); }
+  GetAttribute(e,x) { throw new MethodNotImplemented(util.format("%s::GetAttribute",this._name)); }
+  GetIterator()     { throw new MethodNotImplemented(util.format("%s::GetIterator",this._name)); }
+};
+
+class Number extends EvalInterface {
   constructor(value) {
+    super();
     this.value = value;
   }
 };
 
-class Boolean {
+class Boolean extends EvalInterface {
   constructor(value) {
+    super();
     this.value = value;
   }
 };
 
-class Null {};
+class Null extends EvalInterface {
+  constructor() {
+    super();
+  }
+};
 
 // HeapObject ---------------------------------------------
 // The following object is treated as HeapObject type which supports certain
 // meta method and execution engine is aware of the type and dispatch certain
 // operation back to the corresponding method in the type
 
-class HeapObject {
-  constructor(name) { this._name = name; }
-
-  Dot(idx)          { throw new MethodNotImplemented(util.format("%s::Dot",this._name)); }
-  Index(id)         { throw new MethodNotImplemented(util.format("%s::Index",this._name)); }
-  Slice(a,b,c)      { throw new MethodNotImplemented(util.format("%s::Slice",this._name)); }
-  GetAttribute(e,x) { throw new MethodNotImplemented(util.format("%s::GetAttribute",this._name)); }
-  GetIterator()     { throw new MethodNotImplemented(util.format("%s::GetIterator",this._name)); }
+class HeapObject extends EvalInterface {
+  constructor(name) { super(); this._name = name; }
 };
 
 class String extends HeapObject {
@@ -174,20 +209,31 @@ class String extends HeapObject {
   }
 };
 
-class List extends HeapObject {
+class StructureType extends HeapObject {
+  constructor(name) { super(name); }
+};
+
+class List extends StructureType {
   constructor() { super("List"); this.list = []; }
+
+  GetSize() { return this.list.length; }
+  IsEmpty() { return this.GetSize() == 0; }
+
   Push(x) { this.list.push(x); }
+
   IndexWithNumber(x) {
     if(x < this.list.length)
       return this.list[x];
     throw new OOB(util.format("oob access for List with length:%d and index:%d",this.list.length,x));
   }
+
   Index(idx) {
     if(idx instanceof Number) {
       return this.IndexWithNumber(idx.value);
     }
     throw new TypeMismatch(util.format("expect Number but get type %s",typeof key));
   }
+
   Slice(start,end,stride) {
     if(start instanceof Number && end instanceof Number && stride instanceof Number) {
       let sidx = start.value;
@@ -212,14 +258,14 @@ class List extends HeapObject {
   GetAttribute(x) {
     if(x instanceof String) {
       if(x.value == "size") {
-        return new Number(this.list.length);
+        return new Number(this.GetSize());
       } else if(x.value == "empty") {
-        return new Boolean(this.list.length == 0);
+        return new Boolean(this.IsEmpty());
       } else if(x.value == "type") {
-        return new String("List");
+        return new String(this._name);
       }
     }
-    throw new NoAttribute(util.format("no such attribute %s found in type List",x.name));
+    throw new NoAttribute(util.format("no such attribute %s found in type %s",x.name,this._name));
   }
 
   GetIterator() {
@@ -227,7 +273,140 @@ class List extends HeapObject {
   }
 };
 
-class Pair extends HeapObject {
+// Result set are special data type that is used internally for the evaluator. The evaluator
+// will generate ResultSet on the fly to implement efficient searching and wildcard searching
+// semantic. ResultSet is like a list but Evaluator treat it totally differently.
+class ResultSet extends List {
+  constructor() { super(); this._name = "ResultSet"; }
+};
+
+// This is the iterator for recursive descent result set. This result set is generated when we
+// see `**` wildcard searching. It efficiently wraps the node's value without needing to expand
+// the whole value tree in memory and this strategy turns out to be really performant w.r.t very
+// large input data.
+class RecursiveResultSetIterator {
+  constructor(obj) {
+    this._pending_list = [];
+    this._pcursor      =  0;
+    this._cur_iterator = null;
+
+    this._EnqueuePendingList(obj);
+    this.HasNext();
+  }
+
+  HasNext() {
+    if(this._cur_iterator != null && this._cur_iterator.HasNext()) {
+      return true;
+    } else {
+      // peek one from the pending list
+      while(!this._PendingListEmpty()) {
+        let obj = this._DequeuePendingList();
+        this._cur_iterator = obj.GetIterator();
+        if(this._cur_iterator.HasNext())
+          return true;
+      }
+
+      this._cur_iterator = null;
+      // don't have anything
+      return false;
+    }
+  }
+
+  Next() {
+    this._cur_iterator.Next();
+  }
+
+  GetValue() {
+    let v = this._cur_iterator.GetValue();
+    if(IsStructureType(v)) {
+      this._EnqueuePendingList(v);
+    }
+    return v;
+  }
+
+  // queue implementation that is simple and stupid
+  _DequeuePendingList() {
+    assert(!this._PendingListEmpty());
+    let v = this._pending_list[this._pcursor];
+    ++this._pcursor;
+    return v;
+  }
+
+  _EnqueuePendingList(v) {
+    this._pending_list.push(v);
+  }
+
+  _PendingListEmpty() {
+    return this._pcursor >= this._pending_list.length;
+  }
+};
+
+class RecursiveResultSet extends ResultSet {
+  constructor(obj) { super(); this.obj = obj; this._name = "ResultSet"; }
+
+  GetSize() {
+    let cnt = 0;
+    for( let itr = GetIterator(); itr.HasNext(); itr.Next() ) {
+      ++cnt;
+    }
+    return cn;
+  }
+
+  IsEmpty() {
+    return !GetIterator().HasNext();
+  }
+
+  IndexWithNumber(idx) {
+    let i = 0;
+    for( let itr = this.GetIterator(); itr.HasNext(); itr.Next() ) {
+      if(i == idx) {
+        return itr.GetValue();
+      }
+      ++i;
+    }
+    throw new OOB(util.format("oob access for RecursiveResultSet with index %d",idx));
+  }
+
+  Index(idx) {
+    if(idx instanceof Number) {
+      return this.IndexWithNumber(idx.value);
+    }
+    throw new TypeMismatch(util.format("expect Number but get %s",typeof idx));
+  }
+
+  Slice(start,end,stride) {
+    if(start instanceof Number && end instanceof Number && stride instanceof Number) {
+      let sidx = start.value;
+      let eidx = end.value;
+      let stidx= stride.value;
+
+      // check whether a infinit loop
+      if(eidx - (sidx + stidx) >= eidx - sidx) {
+        throw new SliceOOB("the slice index specified forms an infinit loop");
+      }
+
+      let ret = new List(); // return a normal set which is cheaper to use since user asks for an
+                            // expansion here the cost is already high so assume user is aware of
+                            // what he/she is doing. Plus RS is not mutable
+      let i = sidx;
+      for( let itr = GetIterator(); itr.HasNext(); itr.Next() ) {
+        if(sidx + stidx) break;
+        if(i >= sidx + stidx) {
+          sidx += stidx;
+          ret.Push(itr.GetValue());
+        }
+        ++i;
+      }
+      return ret;
+    }
+    throw new TypeMismatch(util.format("expect Number for all 3 slice arguments , but get type (%s,%s,%s)",
+                                       typeof start,typeof end,typeof stride));
+  }
+
+  GetIterator() { return new RecursiveResultSetIterator(this.obj); }
+};
+
+class Pair extends StructureType {
   constructor(key,value) {
     super("Pair");
 
@@ -255,7 +434,7 @@ class Pair extends HeapObject {
         return this.value;
       }
     }
-    throw new NoAttribute(util.format("no such attribut %s found in type Pair",x.name));
+    throw new NoAttribute(util.format("no such attribute %s found in type Pair",x.name));
   }
 
   Dot(x) {
@@ -274,7 +453,7 @@ class Pair extends HeapObject {
   }
 };
 
-class Dict extends HeapObject {
+class Dict extends StructureType {
   constructor() {
     super("Dict");
 
@@ -289,9 +468,9 @@ class Dict extends HeapObject {
         throw new KeyExisted(key.value);
       }
       this.list.push(new Pair(key,value));
-      this.index[key] = this.list.length - 1;
+      this.index[key.value] = this.list.length - 1;
     } else {
-      throw new TypeMistmach("expect String but get %s",typeof key);
+      throw new TypeMismatch(util.format("expect String but get %s",typeof key));
     }
   }
 
@@ -299,7 +478,7 @@ class Dict extends HeapObject {
     if(key instanceof String) {
       return key.value in this.index;
     } else {
-      throw new TypeMistmach("expect String but get %s",typeof key);
+      throw new TypeMismatch(util.format("expect String but get %s",typeof key));
     }
   }
 
@@ -311,8 +490,37 @@ class Dict extends HeapObject {
         throw new KeyNotFound(key.value);
       }
     } else {
-      throw new TypeMistmach("expect String but get %s",typeof key);
+      throw new TypeMismatch(util.format("expect String but get %s",typeof key));
     }
+  }
+
+  GetValue(key) {
+    let pair = this.Get(key);
+    return pair.value;
+  }
+
+  // Common HeapObject operators/interface -------------------------------
+  Index(idx) {
+    return this.GetValue(idx);
+  }
+
+  Dot(idx) {
+    return this.GetValue(idx);
+  }
+
+  GetAttribute(idx) {
+    if(idx instanceof String) {
+      if(idx.value == "size" ) return new Number (this.list.length);
+      if(idx.value == "empty") return new Boolean(this.list.length == 0);
+      if(idx.value == "type" ) return new String ("Dict");
+
+      throw new NoAttribute(util.format("no such attribute %s found in type Dict",idx.value));
+    }
+    throw new TypeMismatch(util.format("expect String but get %s",typeof idx));
+  }
+
+  GetIterator() {
+    return new ListIteratorWrapper(this.list);
   }
 };
 
@@ -349,13 +557,18 @@ class UserObject extends HeapObject {
 };
 
 module.exports = {
-  Number : Number,
-  Boolean: Boolean,
-  String : String,
-  Null   : Null ,
-  List   : List ,
-  Dict   : Dict ,
-  Pair   : Pair ,
-  HeapObject : HeapObject ,
-  UserObject : UserObject
+  Number             : Number,
+  Boolean            : Boolean,
+  String             : String,
+  Null               : Null ,
+  List               : List ,
+  ResultSet          : ResultSet,
+  RecursiveResultSet : RecursiveResultSet ,
+  Dict               : Dict ,
+  Pair               : Pair ,
+  HeapObject         : HeapObject ,
+  UserObject         : UserObject ,
+  IsHeapType         : IsHeapType ,
+  IsStructureType    : IsStructureType,
+  IsInheritFrom      : IsInheritFrom
 };
