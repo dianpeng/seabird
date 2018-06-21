@@ -1,0 +1,8 @@
+let data = genlist(1,1000,fn(x) "H" if x % 3 == 0 else "E"),
+    xxx  = group  (data,fn(x) "A" if x == "H" else "B");
+
+
+[
+xxx.A.@size,
+xxx.B.@size
+]

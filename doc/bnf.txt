@@ -1,27 +1,3 @@
-Seabird a tree structure query language
-======================================
-
-This is a rewrite of a tree query language I've written while at work. The one that I write
-at work is not open source and implemented in C++ with some customize need. This version is a
-rewrite of the tree query language that I have at work in Javascript.
-
-## Language
-
-### 1. Type
-The language has a simple type system though it is weak type inheritedly. There're several types :
-
-1. number (double)
-2. string
-3. null
-4. boolean
-5. list
-6. pair
-7. dict
-8. function
-9. user defined
-
-### 2. Grammar
-
 The following informal BNF is used to describe the grammar
 
 @main : query-expression
@@ -30,10 +6,10 @@ query-expression := query-variable ? query
 query-variable   := 'let' VARIABLE '=' query (',' VARIABLE = query)*
 
 // query definition
-query            := primary |
-                    prefix  |
-                    unary   |
-                    binary  |
+query            := primary  |
+                    prefix   |
+                    unary    |
+                    binary   |
                     ternary
 
 primary          := constant |
@@ -88,3 +64,4 @@ gtls             := arith ( '<' | '>' | '<=' | '>=' ) gtls
 equal            := equal ( '==' | '!=' ) equal
 unary            := binary | binary 'if' binary 'else' binary
 query            := unary
+

@@ -1,0 +1,12 @@
+let data = range(1,100,1),
+    d2   = genlist(1,100,fn(idx) idx * 100),
+    d3   = "A" + "B",
+    d4   = gendict(1,100,fn(idx) ("A" + str(idx) : idx )),
+    d5   = map(d4,fn(x) x.@value),
+    d6   = filter(d5,fn(x) x % 2 ==0),
+    d7   = reduce(d6,fn(i,x) x + i,0);
+
+[
+sum(d6),
+d7
+]
