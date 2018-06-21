@@ -1,0 +1,11 @@
+## example here shows how to query against a simple json document
+
+let json = JSON("./file.json");
+
+
+## populate a result set as a list
+[
+  json.**.A ,           ## finding out all the pair which has key A
+  json.**[? this > 7 ], ## find out all the number which is larger than 7
+  sum(json.D.D.A)       ## calculate the sum of array locate at root.D.D.A
+]

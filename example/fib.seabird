@@ -1,0 +1,7 @@
+## This example shows a normal function construction and recursion call
+## It's a simple recursive fibnacci number calculator
+
+let fib = fn(x) x if x < 2 else return fib(x-1) + fib(x-2);
+
+# return fibnacci number 10
+fib(10)
