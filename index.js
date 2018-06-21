@@ -4,10 +4,11 @@ const printer= require("./lib/printer.js");
 const util   = require("util");
 const assert = require("assert");
 const fs     = require("fs");
+const sbe    = require("./lib/exception.js");
 
 class CMDParserError {
   constructor(msg,help) {
-    let buf = ["error:\n",msg,"\nHelp:\n",help];
+    let buf = ["Error:  ",msg,"\nHelp:\n",help];
     this.msg = buf.join("");
   }
 };
@@ -70,12 +71,19 @@ function _Main() {
                                "printer" : "optional argument for telling how to print",
                                "query"   : "optional argument for specifying query , you " +
                                            "can put the query right after command line",
-                               "file"    : "a file that contains query script"
+                               "file"    : "a file that contains query script",
+                               "help"    : "show help"
                              });
 
-  let args   = parser.Parse ();
-  let q = null;
   try {
+    let args   = parser.Parse ();
+    let q = null;
+
+    if("help" in args) {
+      console.log(parser.GetHelp());
+      return;
+    }
+
     if(CMDParser.DefaultKey in args) {
       q = args[CMDParser.DefaultKey][0];
     } else if("query" in args) {
@@ -97,7 +105,13 @@ function _Main() {
       console.log(new printer.ExtendedJSON().Print(r));
     }
   } catch(e) {
-    console.log(e);
+    if(e instanceof CMDParserError) {
+      console.log(e.msg);
+    } else if(e instanceof sbe.SeabirdException) {
+      console.log(e.msg);
+    } else {
+      console.log(util.format("Unknown exception happend:%s",e));
+    }
   }
 }
 
