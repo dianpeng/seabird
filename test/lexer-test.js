@@ -1,4 +1,4 @@
-const lexer = require("./lexer.js");
+const lexer = require("../lib/lexer.js");
 const assert= require("assert");
 
 function _testOp() {

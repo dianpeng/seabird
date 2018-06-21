@@ -1,8 +1,9 @@
-const parser = require("./parser.js");
-const object = require("./object.js");
-const eval   = require("./eval.js"  );
+const parser = require("../lib/parser.js");
+const object = require("../lib/object.js");
+const eval   = require("../lib/eval.js"  );
 const assert = require("assert");
 const util   = require("util");
+const printer= require("../lib/printer.js");
 
 function Dump(obj) {
   console.log(util.inspect(obj,{colors:true,depth:10000}));
@@ -54,12 +55,26 @@ function Equal(lhs,rhs) {
 function _Run(xxx,map) {
   let node = parser(xxx);
   let e    = new eval.Eval(map);
+
   try {
-    return e.Eval(node);
+    let x = e.Eval(node);
+    return x;
   } catch(e) {
     console.log(e.msg);
     return null;
   }
+}
+
+function _PrintStrictJSON(xxx,map) {
+  let node = parser(xxx);
+  let e    = new eval.Eval(map);
+  console.log(new printer.StrictJSON().Print(e.Eval(node)));
+}
+
+function _PrintExtendedJSON(xxx,map) {
+  let node = parser(xxx);
+  let e    = new eval.Eval(map);
+  console.log(new printer.ExtendedJSON().Print(e.Eval(node)));
 }
 
 function _Expect(xxx,value) {
@@ -150,4 +165,4 @@ function TestWildcard() {
           "(result.**[? this > 10 ])[0]",new object.Number(11));
 }
 
-TestWildcard();
+_PrintExtendedJSON ("let v = [1,2,false,true,null,\"xxx\",[],[1,2,3,4,5],{\"a\":1},{\"b\":2}]; v",{});

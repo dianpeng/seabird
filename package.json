@@ -1,0 +1,32 @@
+{
+  "name": "seabird",
+  "version": "1.0.0",
+  "description": "a query language for tree like data structure",
+  "main": "index.js",
+  "directories": {
+    "doc": "doc",
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "./test.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dianpeng/seabird.git"
+  },
+  "keywords": [
+    "query",
+    "json",
+    "xml",
+    "expression",
+    "parser",
+    "interpreter"
+  ],
+  "author": "Dian Peng",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dianpeng/seabird/issues"
+  },
+  "homepage": "https://github.com/dianpeng/seabird#readme"
+}
