@@ -4,4 +4,4 @@
 let fib = fn(x) x if x < 2 else fib(x-1) + fib(x-2);
 
 # return fibnacci number 10
-fib(10)
+fib(25);
