@@ -3,6 +3,7 @@ const eval   = require("./lib/eval.js"  );
 const printer= require("./lib/printer.js");
 const util   = require("util");
 const assert = require("assert");
+const fs     = require("fs");
 
 class CMDParserError {
   constructor(msg,help) {
@@ -12,6 +13,7 @@ class CMDParserError {
 };
 
 class CMDParser {
+  static get DefaultKey() { return "@"; }
   constructor(title,keys) {
     this.title= title;
     this.keys = keys;
@@ -27,7 +29,7 @@ class CMDParser {
   _ParseCMD() {
     var args = process.argv.slice(2);
     var res  = {};
-    var cur  = "@"; // the default implicit keys
+    var cur  = CMDParser.DefaultKey;
 
     for( const x of args ) {
       let k = this._IsKey(x);
@@ -66,16 +68,20 @@ function _Main() {
   let parser = new CMDParser("Seabird Query Language",
                              {
                                "printer" : "optional argument for telling how to print",
-                               "query"   : "optional argument for specifying query , you can put the query right after command line"
+                               "query"   : "optional argument for specifying query , you " +
+                                           "can put the query right after command line",
+                               "file"    : "a file that contains query script"
                              });
 
   let args   = parser.Parse ();
   let q = null;
   try {
-    if("@" in args) {
-      q = args["@"][0];
+    if(CMDParser.DefaultKey in args) {
+      q = args[CMDParser.DefaultKey][0];
     } else if("query" in args) {
       q = args["query"][0];
+    } else if("file" in args) {
+      q = fs.readFileSync(args["file"][0]).toString();
     } else {
       console.log(parser.GetHelp());
       return;

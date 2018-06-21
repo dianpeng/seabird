@@ -1,0 +1,4 @@
+let a = CSV("file.csv",";"), b = JSON("file.json");
+
+# Main entry
+(b.**.A)[1] + a[1][2]
