@@ -5,6 +5,12 @@ This is a rewrite of a tree query language I've written while at work. The one t
 at work is not open source and implemented in C++ with some customize need. This version is a
 rewrite of the tree query language that I have at work in Javascript.
 
+# Application
+
+The library has a command line tool for doing interactive query. To use it, just need to use
+your node like this `node index.js "your_query"`. Then the result will be printted into the
+console.
+
 # Language
 
 ## 1. Type
@@ -79,6 +85,8 @@ d10(10), # calculate fibonacci number
 d11
 ]
 ```
+
+For more example, please see query inside of the example.
 
 ## 3. Builtins
 
