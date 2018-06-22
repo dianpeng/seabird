@@ -1,5 +1,5 @@
 # parse the CSV file with delimiter set to ',' or ' '(whitespace) or ';'
-let a = CSV("./file.csv",",|;| ");
+let data = file("file.csv"), a = CSV(data,",|;| ");
 
 # output the sum of second line in CSV file
 sum(a[1])

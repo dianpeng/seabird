@@ -1,6 +1,7 @@
 ## example here shows how to query against a simple json document
 
-let json = JSON("./file.json");
+let data = file("./file.json");
+let json = JSON(data);
 
 
 ## populate a result set as a list

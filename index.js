@@ -1,10 +1,12 @@
 const sbp    = require("./lib/parser.js");
 const eval   = require("./lib/eval.js"  );
 const printer= require("./lib/printer.js");
+const sbe    = require("./lib/exception.js");
+const obj    = require("./lib/object.js");
+
 const util   = require("util");
 const assert = require("assert");
 const fs     = require("fs");
-const sbe    = require("./lib/exception.js");
 
 class CMDParserError {
   constructor(msg,help) {
@@ -72,12 +74,14 @@ function _Main() {
                                "query"   : "optional argument for specifying query , you " +
                                            "can put the query right after command line",
                                "file"    : "a file that contains query script",
+                               "dollar"  : "a file path that indicates where the dollar symbol's data comes from",
                                "help"    : "show help"
                              });
 
   try {
     let args   = parser.Parse ();
     let q = null;
+    let dollar = new obj.Null();
 
     if("help" in args) {
       console.log(parser.GetHelp());
@@ -89,14 +93,18 @@ function _Main() {
     } else if("query" in args) {
       q = args["query"][0];
     } else if("file" in args) {
-      q = fs.readFileSync(args["file"][0]).toString();
+      q = (fs.readFileSync(args["file"][0]).toString());
     } else {
       console.log(parser.GetHelp());
       return;
     }
 
+    if("dollar" in args) {
+      dollar = new obj.String(fs.readFileSync(args["dollar"][0]).toString());
+    }
+
     let n = sbp(q);
-    let e = new eval.Eval({},null);
+    let e = new eval.Eval({},dollar);
     let r = e.Eval(n);
 
     if("printer" in args && args.printer[0] == "JSON") {

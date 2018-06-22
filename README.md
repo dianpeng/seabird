@@ -37,7 +37,8 @@ Example:
 
 ```
 ## The let scope here defines one or multiple variables
-let v = JSON("my_file.json") ,  # load a json file from disk and store the result into variable V
+let data = file("my_file.json");# load a file content into memory
+let v = JSON(data)           ,  # load data as JSON document
     d = v.**.Age[? this > 18];  # do a recursive search on all the *Age* field inside of JSON when the age field is
                                 # larger than 18
 
@@ -50,8 +51,11 @@ syntax added.
 
 Here are simple basic example to show what we can do with the query:
 ```
-let json = JSON("json.file") ,                  # load json
-    csv  = CSV ("csv.file" , " |,|;"),          # load CSV, delimited by space or comma or semicolon
+let json_data = file("json.file");
+let csv_data  = file("csv.file");
+
+let json = JSON(json_data) ,                    # load json
+    csv  = CSV (csv_data, " |,|;"),             # load CSV, delimited by space or comma or semicolon
     d1   = json[1:100:2],                       # slice the array with start 1 , end 100 and stride 2
     d2   = json[0].field,                       # access a field called "field" in json object
     d3   = json.*[? (this.@value >= 13 &&       # apply filter on top of every direct child of object *Json*
@@ -115,6 +119,7 @@ For more example, please see query inside of the example.
 24. map
 25. group
 26. reduce
+27. file
 
 
 ## 4. Fully Extendable
@@ -126,7 +131,7 @@ and CSV style. But it is easy to wrap XML,Yaml or other tree structure data into
 The library is fully Javascript based and it nearly doesn't depend anything on Node.js except following library :
 1) util
 2) assert
-3) fs
+3) fs (if runs in browser, this one can be changed to use ajax or whatever to get the data)
 
 These dependency has been separated into folder lib/port so it is rather easy to port the library into browser.
 
