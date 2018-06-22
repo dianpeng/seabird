@@ -11,6 +11,45 @@ The library has a command line tool for doing interactive query. To use it, just
 your node like this `node index.js "your_query"`. Then the result will be printted into the
 console.
 
+
+# Browser
+It is really easy to put the seabird library into the browser and run it entirely in the client.
+I've tested it with Browserify. All you need to do is run command `browserify browser.js -o seabird.js`.
+Then the whole library is in seabird.js. To use it here is an simple example
+
+```
+html:
+
+<script src='./seabird.js'> </script>
+
+test.js:
+
+const obj    = window.seabirdObject;
+const parser = window.seabirdParser;
+const eval   = window.seabirdNewEvaluator;
+const printer= window.seabirdPrinter;
+
+let data = new obj.String("{\"Hello\":\"World\"}");
+
+// use global variable $ which later on will be passed into object Eval
+let ast  = parser("JSON($).Hello");
+
+// new an evaluator , with first argument is a map of global variables and
+// second variable represents the dollar sign's data , here our data is a
+// string wrapper inside of obj.String. Notes, every normal Javascript
+// data needs to be wrapped as internal object representation.
+let e    = eval({},data);
+
+// then do the evaluation and get the result
+let r    = e.Eval();
+
+// then print the result out
+console.log( new printer.StrictJSON().Print(r) );
+```
+
+In browser, except builtin function `file` cannot be used, any other function works exactly the same.
+And user can extend the library with new builtin functions or data models.
+
 # Language
 
 ## 1. Type
@@ -122,12 +161,12 @@ For more example, please see query inside of the example.
 27. file
 
 
-## 4. Fully Extendable
+# Extension
 The library allows user to plugin any types of tree structure data for querying purpose. The builtin one supports JSON
 and CSV style. But it is easy to wrap XML,Yaml or other tree structure data into the library for querying purpose.
 
 
-## 5. Misc
+# Misc
 The library is fully Javascript based and it nearly doesn't depend anything on Node.js except following library :
 1) util
 2) assert
@@ -136,5 +175,5 @@ The library is fully Javascript based and it nearly doesn't depend anything on N
 These dependency has been separated into folder lib/port so it is rather easy to port the library into browser.
 
 
-## 6. License
+# License
 MIT
