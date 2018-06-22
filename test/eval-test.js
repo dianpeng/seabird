@@ -60,7 +60,6 @@ function _Run(xxx,map) {
     let x = e.Eval(node);
     return x;
   } catch(e) {
-    console.log(e.msg);
     return null;
   }
 }
@@ -165,4 +164,15 @@ function TestWildcard() {
           "(result.**[? this > 10 ])[0]",new object.Number(11));
 }
 
-_PrintExtendedJSON ("let v = [1,2,false,true,null,\"xxx\",[],[1,2,3,4,5],{\"a\":1},{\"b\":2}]; v",{});
+TestUnary();
+TestArith();
+TestComp();
+TestLogic();
+TestString();
+TestList();
+TestDict();
+TestPredicate();
+TestRewrite();
+TestForeach();
+TestWildcard();
+
