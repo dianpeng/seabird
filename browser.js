@@ -4,7 +4,9 @@ const printer= require("./lib/printer.js");
 const obj    = require("./lib/object.js" );
 const excep  = require("./lib/exception.js");
 
-window.seabirdParse        = function(xx){ return parser(xx); }
+window.seabirdParse        = function(xx) {
+  return parser(xx);
+}
 window.seabirdNewEvaluator = function(map,dollar) {
   return new eval.Eval(map,dollar);
 }

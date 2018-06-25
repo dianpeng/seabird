@@ -1,0 +1,6 @@
+let data = file("./large.json"),json = JSON(data);
+
+# now let's query some data with regex
+let r    = new_regex("^Wood");
+
+json.**[? r.has(this) ]
