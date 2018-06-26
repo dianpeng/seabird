@@ -165,15 +165,5 @@ And user can extend the library with new builtin functions or data models.
 The library allows user to plugin any types of tree structure data for querying purpose. The builtin one supports JSON
 and CSV style. But it is easy to wrap XML,Yaml or other tree structure data into the library for querying purpose.
 
-
-# Misc
-The library is fully Javascript based and it nearly doesn't depend anything on Node.js except following library :
-1) util
-2) assert
-3) fs (if runs in browser, this one can be changed to use ajax or whatever to get the data)
-
-These dependency has been separated into folder lib/port so it is rather easy to port the library into browser.
-
-
 # License
 MIT
